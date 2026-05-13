@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoPiaifoSji70P7YN3Nz94JeCrO925sAQRh38K_3HqAT32MDio92Fpcva1Rhz_-nx-IA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVihW3_iHuvq9oY7UVt6fNtgL_-TaMH0oDnIks_f0aqM72UOzS5S_9jDkHcOBwXQtYFg/exec";
 const ADMIN_SECRET = "catalysT";
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -115,6 +115,8 @@ function AdminPage({ onSwitch }) {
   const [secret, setSecret] = useState("");
   const [authError, setAuthError] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [confirmIdx, setConfirmIdx] = useState(null);
 
   async function fetchContacts() {
     setLoading(true); setAuthError(false);
@@ -129,6 +131,18 @@ function AdminPage({ onSwitch }) {
       }
     } catch { setAuthError(true); }
     finally { setLoading(false); }
+  }
+
+  async function handleDelete(idx) {
+    setDeleting(idx);
+    setConfirmIdx(null);
+    const contact = contacts[idx];
+    try {
+      await fetch(`${SCRIPT_URL}?secret=${encodeURIComponent(secret)}&action=delete&phone=${encodeURIComponent(contact.phone)}`, { mode: "no-cors" });
+    } finally {
+      setContacts(prev => prev.filter((_, i) => i !== idx));
+      setDeleting(null);
+    }
   }
 
   async function handleCopyVCF() {
@@ -184,19 +198,32 @@ function AdminPage({ onSwitch }) {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {["#", "Name", "WhatsApp Number", "Submitted"].map(h => (
+                  {["#", "Name", "WhatsApp Number", "Submitted", ""].map(h => (
                     <th key={h} style={styles.th}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {contacts.map((c, i) => (
-                  <tr key={i}>
+                  <tr key={i} style={{ opacity: deleting === i ? 0.4 : 1, transition: "opacity 0.2s" }}>
                     <td style={{ ...styles.td, color: "#3d5946", fontSize: "0.8rem" }}>{i + 1}</td>
                     <td style={{ ...styles.td, color: "#e8f5ea", fontWeight: 500 }}>{c.name}</td>
                     <td style={{ ...styles.td, fontFamily: "monospace", color: "#8db89e" }}>{c.phone}</td>
                     <td style={{ ...styles.td, fontSize: "0.8rem", color: "#3d5946" }}>
                       {c.timestamp ? new Date(c.timestamp).toLocaleDateString() : "—"}
+                    </td>
+                    <td style={styles.td}>
+                      {confirmIdx === i ? (
+                        <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                          <span style={{ fontSize: "0.75rem", color: "#fbbf24" }}>Sure?</span>
+                          <button onClick={() => handleDelete(i)} style={styles.btnConfirmYes}>Yes</button>
+                          <button onClick={() => setConfirmIdx(null)} style={styles.btnConfirmNo}>No</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => setConfirmIdx(i)} disabled={deleting === i} style={styles.btnDelete}>
+                          {deleting === i ? "…" : "✕"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -338,4 +365,17 @@ const styles = {
   },
   vcfTitle: { fontFamily: "'Sora', sans-serif", fontSize: "0.9rem", color: "#25D366", marginBottom: 12, fontWeight: 600 },
   vcfList: { paddingLeft: 18, display: "flex", flexDirection: "column", gap: 10, fontSize: "0.88rem", color: "#7aaa88", lineHeight: 1.6 },
+  btnDelete: {
+    background: "none", border: "1px solid rgba(220,50,50,0.25)", color: "#f87171",
+    borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "0.8rem",
+    transition: "background 0.15s",
+  },
+  btnConfirmYes: {
+    background: "rgba(220,50,50,0.15)", border: "1px solid rgba(220,50,50,0.3)",
+    color: "#f87171", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: "0.75rem",
+  },
+  btnConfirmNo: {
+    background: "rgba(37,211,102,0.08)", border: "1px solid rgba(37,211,102,0.2)",
+    color: "#4ade80", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: "0.75rem",
+  },
 };
