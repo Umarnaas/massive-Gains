@@ -182,30 +182,18 @@ function FormPage({ onSwitch }) {
 function SuccessScreen({ slotResult, savedName }) {
   const [copied, setCopied] = useState(false);
 
-  const shareText = `🔥 I just joined Massive Gains 300.0!\n\nA verified WhatsApp network of 300 entrepreneurs & go-getters.\n\n📲 Grab your slot here:\n${FORM_URL}\n\n#MassiveGains #MCG300`;
-
-  async function handleShare() {
-    if (navigator.share) {
-      // Native share sheet on mobile
-      try {
-        await navigator.share({ title: "Massive Gains 300.0", text: shareText, url: FORM_URL });
+  as
       } catch {}
     } else {
       // Fallback: copy to clipboard
       await navigator.clipboard.writeText(shareText);
       setCopied(true);
       setTimeout(() => setCopied(false), 3000);
-    }
-  }
-
-  function handleJoinGroup() {
-    window.open(WA_GROUP_LINK, "_blank");
-  }
-
+    
   return (
     <div style={styles.successBox}>
       {/* Tick */}
-      <div style={styles.successIcon}>✅</div>
+      <div style={styles.successIcon}>✅</di
 
       {/* Welcome message */}
       <p style={styles.successTitle}>You're in, MCG {savedName}!</p>
