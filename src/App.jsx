@@ -11,7 +11,9 @@ const FILE_NAME    = "MCG_ContactsGain_May2026";
 // ─── Helpers ─────────────────────────────────────────────────
 
 function toInternational(raw) {
-  const d = raw.replace(/[^\d]/g, "");
+  if (!raw && raw !== 0) return "";
+  const d = String(raw).replace(/[^\d]/g, "");
+  if (!d) return "";
   if (d.startsWith("234")) return "+" + d;
   if (d.startsWith("0"))   return "+234" + d.slice(1);
   return "+234" + d;
