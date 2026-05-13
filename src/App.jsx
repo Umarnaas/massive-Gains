@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 // ─────────────────────────────────────────────────────────────
 //  🔧 PASTE YOUR NEW APPS SCRIPT URL HERE AFTER REDEPLOYING
 // ─────────────────────────────────────────────────────────────
-const SCRIPT_URL   = "https://script.google.com/macros/s/AKfycbyJSP2bJAKthAZVALS8-JzaE0HJq8N8jb03OOCbnIcKtW2hMMD7mBG5cSsO9kS1REy6nw/exec";
+const SCRIPT_URL   = "https://script.google.com/macros/s/AKfycbwb7JwAlwkYKJ3UphA-97t6m0O8TJqDkon-yHS32wUJH4jzFhm2_O5Zhubk8EGPt8q0Lg/exec";
 const ADMIN_SECRET = "catalysT";
 const MAX_SLOTS    = 300;
 const FILE_NAME    = "MCG_ContactsGain_May2026";
