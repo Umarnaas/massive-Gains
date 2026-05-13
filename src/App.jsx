@@ -40,24 +40,19 @@ function FormPage({ onSwitch }) {
     setStatus("loading");
     try {
       const form = new FormData();
-form.append("name", name.trim());
-form.append("phone", phone.trim());
+      form.append("name", name.trim());
+      form.append("phone", phone.trim());
 
-await fetch(SCRIPT_URL, {
-  method: "POST",
-  body: form,
-  mode: "no-cors",
-});
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        body: form,
+        mode: "no-cors",
+      });
 
-// no-cors means we can't read the response, assume success
-      if (json.ok) {
-        setStatus("success");
-        setName(""); setPhone("");
-      } else if (json.error === "duplicate") {
-        setStatus("duplicate");
-      } else {
-        setStatus("error");
-      }
+      // no-cors means we can't read the response — assume success
+      setStatus("success");
+      setName("");
+      setPhone("");
     } catch {
       setStatus("error");
     }
