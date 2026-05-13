@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFI-dGYNDOFD_1An62jZdg...";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoPiaifoSji70P7YN3Nz94JeCrO925sAQRh38K_3HqAT32MDio92Fpcva1Rhz_-nx-IA/exec";
 const ADMIN_SECRET = "catalysT";
 
 // ─── Helpers ─────────────────────────────────────────────────
