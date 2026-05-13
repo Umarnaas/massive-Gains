@@ -39,11 +39,17 @@ function FormPage({ onSwitch }) {
     if (!name.trim() || !phone.trim()) { setStatus("error"); return; }
     setStatus("loading");
     try {
-      const res = await fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim() }),
-      });
-      const json = await res.json();
+      const form = new FormData();
+form.append("name", name.trim());
+form.append("phone", phone.trim());
+
+await fetch(SCRIPT_URL, {
+  method: "POST",
+  body: form,
+  mode: "no-cors",
+});
+
+// no-cors means we can't read the response, assume success
       if (json.ok) {
         setStatus("success");
         setName(""); setPhone("");
