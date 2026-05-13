@@ -7,8 +7,6 @@ const SCRIPT_URL   = "https://script.google.com/macros/s/AKfycbyQIPZuT01eLk88g9o
 const ADMIN_SECRET = "catalysT";
 const MAX_SLOTS    = 300;
 const FILE_NAME    = "MCG_ContactsGain_May2026";
-const WA_GROUP_LINK = "YOUR_WHATSAPP_GROUP_LINK_HERE"; // 🔧 Paste your WhatsApp group invite link
-const FORM_URL     = "https://massive-gains.vercel.app"; // 🔧 Your Vercel site URL
 
 // ─── Helpers ─────────────────────────────────────────────────
 
