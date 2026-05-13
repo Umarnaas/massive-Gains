@@ -8,7 +8,7 @@ const ADMIN_SECRET = "catalysT";
 // Auto-convert Nigerian number to international format for vCard
 // 08012345678 → +2348012345678
 function toInternational(raw) {
-  const digits = raw.replace(/[^\d]/g, "");
+  const digits = String(raw).replace(/[^\d]/g, "");
   if (digits.startsWith("234")) return "+" + digits;
   if (digits.startsWith("0"))   return "+234" + digits.slice(1);
   return "+234" + digits;
@@ -45,7 +45,7 @@ function FormPage({ onSwitch }) {
 
   async function handleSubmit() {
     if (!name.trim() || !phone.trim()) { setStatus("error"); return; }
-    const digits = phone.replace(/[^\d]/g, "");
+    const digits = String(phone).replace(/[^\d]/g, "");
     if (digits.length < 8) { setStatus("badphone"); return; }
     setStatus("loading");
     try {
