@@ -1,58 +1,60 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVihW3_iHuvq9oY7UVt6fNtgL_-TaMH0oDnIks_f0aqM72UOzS5S_9jDkHcOBwXQtYFg/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWIV8jTraa3BsqN_U6uBOCeL6IVZ37-15vQXP_6DYkPxEg3loili-LwNSludsu_YBbzA/exec";
 const ADMIN_SECRET = "catalysT";
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-function sanitizePhone(raw) {
-  return raw.replace(/[^\d+]/g, "");
+// Auto-convert Nigerian number to international format for vCard
+// 08012345678 → +2348012345678
+function toInternational(raw) {
+  const digits = raw.replace(/[^\d]/g, "");
+  if (digits.startsWith("234")) return "+" + digits;
+  if (digits.startsWith("0"))   return "+234" + digits.slice(1);
+  return "+234" + digits;
 }
 
 function buildVCF(contacts) {
   return contacts
     .map(({ name, phone }) => {
-      const tel = sanitizePhone(phone);
+      const tel = toInternational(phone);
       return ["BEGIN:VCARD", "VERSION:3.0", `FN:${name}`, `TEL;TYPE=CELL,VOICE:${tel}`, "END:VCARD"].join("\r\n");
     })
     .join("\r\n");
 }
 
 function downloadVCF(contacts) {
-  const blob = new Blob([buildVCF(contacts)], { type: "text/vcard" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "whatsapp_contacts.vcf";
+  const vcf  = buildVCF(contacts);
+  const blob = new Blob([vcf], { type: "text/vcard;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.style.display = "none";
+  a.href     = url;
+  a.download = "massive_gains_contacts.vcf";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
 }
 
 // ─── Form Page ────────────────────────────────────────────────
 
 function FormPage({ onSwitch }) {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name,   setName]   = useState("");
+  const [phone,  setPhone]  = useState("");
   const [status, setStatus] = useState("idle");
 
   async function handleSubmit() {
     if (!name.trim() || !phone.trim()) { setStatus("error"); return; }
+    const digits = phone.replace(/[^\d]/g, "");
+    if (digits.length < 8) { setStatus("badphone"); return; }
     setStatus("loading");
     try {
       const form = new FormData();
-      form.append("name", name.trim());
+      form.append("name",  name.trim());
       form.append("phone", phone.trim());
-
-      await fetch(SCRIPT_URL, {
-        method: "POST",
-        body: form,
-        mode: "no-cors",
-      });
-
-      // no-cors means we can't read the response — assume success
+      await fetch(SCRIPT_URL, { method: "POST", body: form, mode: "no-cors" });
       setStatus("success");
-      setName("");
-      setPhone("");
+      setName(""); setPhone("");
     } catch {
       setStatus("error");
     }
@@ -69,39 +71,38 @@ function FormPage({ onSwitch }) {
             </svg>
           </div>
           <h1 style={styles.h1}>Join the Group</h1>
-          <p style={styles.subtitle}>Submit your details so everyone can connect & see your WhatsApp Status</p>
+          <p style={styles.subtitle}>Submit your details so everyone can connect & see your WhatsApp Status 🇳🇬</p>
         </div>
 
         <div style={styles.fields}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <label style={styles.label}>Your Name</label>
             <p style={styles.hint}>Enter it exactly as you want it saved in everyone's contacts</p>
-            <input style={styles.input} type="text" placeholder="e.g. Amara Johnson"
+            <input style={styles.input} type="text" placeholder="e.g. Chidi Okeke"
               value={name} onChange={e => { setName(e.target.value); setStatus("idle"); }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <label style={styles.label}>WhatsApp Number</label>
-            <p style={styles.hint}>Include your country code — e.g. +234 812 345 6789</p>
-            <input style={styles.input} type="tel" placeholder="+234 812 345 6789"
+            <p style={styles.hint}>Enter your number normally e.g. 08012345678</p>
+            <input style={styles.input} type="tel" placeholder="08012345678"
               value={phone} onChange={e => { setPhone(e.target.value); setStatus("idle"); }} />
           </div>
         </div>
 
-        {status === "error"     && <Msg type="error">Please fill in both your name and number.</Msg>}
-        {status === "duplicate" && <Msg type="warn">That number is already registered! ✓</Msg>}
-        {status === "success"   && <Msg type="ok">You're in! 🎉 Your contact has been saved.</Msg>}
+        {status === "error"    && <Msg type="error">Please fill in both your name and number.</Msg>}
+        {status === "badphone" && <Msg type="error">Please enter a valid phone number.</Msg>}
+        {status === "success"  && <Msg type="ok">You're in! 🎉 Your contact has been saved.</Msg>}
 
         <button
           style={{ ...styles.btnPrimary, opacity: status === "loading" ? 0.7 : 1 }}
-          onClick={handleSubmit}
-          disabled={status === "loading"}
+          onClick={handleSubmit} disabled={status === "loading"}
         >
           {status === "loading" ? "Saving…" : "Submit My Contact"}
         </button>
 
         <button style={styles.btnLink} onClick={onSwitch}>Admin: View & Export Contacts →</button>
       </div>
-      <style>{inputFocusStyle}</style>
+      <style>{globalStyle}</style>
     </div>
   );
 }
@@ -109,36 +110,34 @@ function FormPage({ onSwitch }) {
 // ─── Admin Page ───────────────────────────────────────────────
 
 function AdminPage({ onSwitch }) {
-  const [contacts, setContacts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [fetched, setFetched] = useState(false);
-  const [secret, setSecret] = useState("");
-  const [authError, setAuthError] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [deleting, setDeleting] = useState(null);
+  const [contacts,   setContacts]   = useState([]);
+  const [loading,    setLoading]    = useState(false);
+  const [fetched,    setFetched]    = useState(false);
+  const [secret,     setSecret]     = useState("");
+  const [authError,  setAuthError]  = useState(false);
+  const [copied,     setCopied]     = useState(false);
+  const [deleting,   setDeleting]   = useState(null);
   const [confirmIdx, setConfirmIdx] = useState(null);
 
   async function fetchContacts() {
     setLoading(true); setAuthError(false);
     try {
-      const res = await fetch(`${SCRIPT_URL}?secret=${encodeURIComponent(secret)}`);
+      const res  = await fetch(`${SCRIPT_URL}?secret=${encodeURIComponent(secret)}`);
       const json = await res.json();
-      if (json.ok) {
-        setContacts(json.contacts || []);
-        setFetched(true);
-      } else {
-        setAuthError(true);
-      }
+      if (json.ok) { setContacts(json.contacts || []); setFetched(true); }
+      else { setAuthError(true); }
     } catch { setAuthError(true); }
-    finally { setLoading(false); }
+    finally  { setLoading(false); }
   }
 
   async function handleDelete(idx) {
-    setDeleting(idx);
-    setConfirmIdx(null);
+    setDeleting(idx); setConfirmIdx(null);
     const contact = contacts[idx];
     try {
-      await fetch(`${SCRIPT_URL}?secret=${encodeURIComponent(secret)}&action=delete&phone=${encodeURIComponent(contact.phone)}`, { mode: "no-cors" });
+      await fetch(
+        `${SCRIPT_URL}?secret=${encodeURIComponent(secret)}&action=delete&phone=${encodeURIComponent(contact.phone)}`,
+        { mode: "no-cors" }
+      );
     } finally {
       setContacts(prev => prev.filter((_, i) => i !== idx));
       setDeleting(null);
@@ -147,8 +146,7 @@ function AdminPage({ onSwitch }) {
 
   async function handleCopyVCF() {
     await navigator.clipboard.writeText(buildVCF(contacts));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopied(true); setTimeout(() => setCopied(false), 2500);
   }
 
   return (
@@ -164,8 +162,10 @@ function AdminPage({ onSwitch }) {
             <button style={styles.btnSecondary} onClick={handleCopyVCF}>
               {copied ? "Copied! ✓" : "Copy vCard"}
             </button>
-            <button style={{ ...styles.btnPrimary, width: "auto", marginBottom: 0 }}
-              onClick={() => downloadVCF(contacts)} disabled={contacts.length === 0}>
+            <button
+              style={{ ...styles.btnPrimary, width: "auto", marginBottom: 0, padding: "9px 18px" }}
+              onClick={() => downloadVCF(contacts)} disabled={contacts.length === 0}
+            >
               ⬇ Download .vcf
             </button>
           </div>
@@ -178,14 +178,12 @@ function AdminPage({ onSwitch }) {
             Enter your admin secret to load contacts from Google Sheets
           </p>
           <input
-            style={{ ...styles.input, marginBottom: 12 }}
-            type="password"
-            placeholder="Admin secret"
-            value={secret}
+            style={{ ...styles.input, marginBottom: 12 }} type="password"
+            placeholder="Admin secret" value={secret}
             onChange={e => { setSecret(e.target.value); setAuthError(false); }}
             onKeyDown={e => e.key === "Enter" && fetchContacts()}
           />
-          {authError && <Msg type="error">Wrong secret or connection error.</Msg>}
+          {authError && <Msg type="error">Wrong secret or connection error. Try again.</Msg>}
           <button style={styles.btnPrimary} onClick={fetchContacts} disabled={loading}>
             {loading ? "Loading…" : "Load Contacts"}
           </button>
@@ -198,7 +196,7 @@ function AdminPage({ onSwitch }) {
             <table style={styles.table}>
               <thead>
                 <tr>
-                  {["#", "Name", "WhatsApp Number", "Submitted", ""].map(h => (
+                  {["#", "Name", "Phone → International", "Submitted", ""].map(h => (
                     <th key={h} style={styles.th}>{h}</th>
                   ))}
                 </tr>
@@ -208,7 +206,10 @@ function AdminPage({ onSwitch }) {
                   <tr key={i} style={{ opacity: deleting === i ? 0.4 : 1, transition: "opacity 0.2s" }}>
                     <td style={{ ...styles.td, color: "#3d5946", fontSize: "0.8rem" }}>{i + 1}</td>
                     <td style={{ ...styles.td, color: "#e8f5ea", fontWeight: 500 }}>{c.name}</td>
-                    <td style={{ ...styles.td, fontFamily: "monospace", color: "#8db89e" }}>{c.phone}</td>
+                    <td style={{ ...styles.td, fontFamily: "monospace", color: "#8db89e" }}>
+                      {c.phone}
+                      <span style={{ color: "#3d5946", marginLeft: 6 }}>→ {toInternational(c.phone)}</span>
+                    </td>
                     <td style={{ ...styles.td, fontSize: "0.8rem", color: "#3d5946" }}>
                       {c.timestamp ? new Date(c.timestamp).toLocaleDateString() : "—"}
                     </td>
@@ -242,21 +243,21 @@ function AdminPage({ onSwitch }) {
           </div>
         </>
       )}
-      <style>{inputFocusStyle}</style>
+      <style>{globalStyle}</style>
     </div>
   );
 }
 
-// ─── Small components ─────────────────────────────────────────
+// ─── Msg ─────────────────────────────────────────────────────
 
 function Msg({ type, children }) {
-  const colors = {
-    error: { bg: "rgba(220,50,50,0.1)", color: "#f87171", border: "rgba(220,50,50,0.2)" },
-    warn:  { bg: "rgba(234,179,8,0.1)",  color: "#fbbf24", border: "rgba(234,179,8,0.2)" },
+  const c = {
+    error: { bg: "rgba(220,50,50,0.1)",  color: "#f87171", border: "rgba(220,50,50,0.2)"   },
+    warn:  { bg: "rgba(234,179,8,0.1)",  color: "#fbbf24", border: "rgba(234,179,8,0.2)"   },
     ok:    { bg: "rgba(37,211,102,0.1)", color: "#4ade80", border: "rgba(37,211,102,0.25)" },
   }[type];
   return (
-    <div style={{ background: colors.bg, color: colors.color, border: `1px solid ${colors.border}`,
+    <div style={{ background: c.bg, color: c.color, border: `1px solid ${c.border}`,
       borderRadius: 10, padding: "12px 16px", fontSize: "0.88rem", marginBottom: 16, lineHeight: 1.5 }}>
       {children}
     </div>
@@ -268,13 +269,13 @@ function Msg({ type, children }) {
 export default function App() {
   const [page, setPage] = useState("form");
   return page === "form"
-    ? <FormPage onSwitch={() => setPage("admin")} />
-    : <AdminPage onSwitch={() => setPage("form")} />;
+    ? <FormPage  onSwitch={() => setPage("admin")} />
+    : <AdminPage onSwitch={() => setPage("form")}  />;
 }
 
 // ─── Styles ───────────────────────────────────────────────────
 
-const inputFocusStyle = `
+const globalStyle = `
   @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   input:focus { border-color: rgba(37,211,102,0.6) !important; box-shadow: 0 0 0 3px rgba(37,211,102,0.08) !important; outline: none; }
@@ -305,9 +306,9 @@ const styles = {
   },
   h1: { fontFamily: "'Sora', sans-serif", fontSize: "1.75rem", fontWeight: 700, color: "#f0fdf4", letterSpacing: "-0.02em", marginBottom: 8 },
   subtitle: { fontSize: "0.88rem", color: "#6b7c72", lineHeight: 1.6 },
-  fields: { display: "flex", flexDirection: "column", gap: 22, marginBottom: 24 },
+  fields:   { display: "flex", flexDirection: "column", gap: 22, marginBottom: 24 },
   label: { fontFamily: "'Sora', sans-serif", fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#25D366", marginBottom: 4, display: "block" },
-  hint: { fontSize: "0.78rem", color: "#4a5c51", marginBottom: 10, lineHeight: 1.4 },
+  hint:  { fontSize: "0.78rem", color: "#4a5c51", marginBottom: 10, lineHeight: 1.4 },
   input: {
     width: "100%", background: "#0d1410", border: "1.5px solid rgba(37,211,102,0.18)",
     borderRadius: 10, padding: "13px 16px", fontFamily: "'DM Sans', sans-serif",
@@ -333,11 +334,8 @@ const styles = {
     color: "#25D366", borderRadius: 8, padding: "8px 14px",
     fontFamily: "'DM Sans', sans-serif", fontSize: "0.85rem", cursor: "pointer",
   },
-  h2: { fontFamily: "'Sora', sans-serif", fontSize: "1.3rem", fontWeight: 700, color: "#f0fdf4" },
-  badge: {
-    background: "rgba(37,211,102,0.15)", color: "#25D366", fontSize: "0.75rem",
-    fontWeight: 600, padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(37,211,102,0.25)",
-  },
+  h2:    { fontFamily: "'Sora', sans-serif", fontSize: "1.3rem", fontWeight: 700, color: "#f0fdf4" },
+  badge: { background: "rgba(37,211,102,0.15)", color: "#25D366", fontSize: "0.75rem", fontWeight: 600, padding: "3px 10px", borderRadius: 20, border: "1px solid rgba(37,211,102,0.25)" },
   btnSecondary: {
     background: "rgba(37,211,102,0.08)", border: "1px solid rgba(37,211,102,0.25)",
     color: "#25D366", fontFamily: "'Sora', sans-serif", fontSize: "0.82rem",
@@ -347,35 +345,15 @@ const styles = {
     maxWidth: 380, margin: "0 auto", background: "#0c1711",
     border: "1px solid rgba(37,211,102,0.12)", borderRadius: 16, padding: "32px 28px",
   },
-  empty: {
-    textAlign: "center", color: "#3d5946", padding: "60px 20px",
-    border: "1px dashed rgba(37,211,102,0.12)", borderRadius: 14,
-  },
+  empty: { textAlign: "center", color: "#3d5946", padding: "60px 20px", border: "1px dashed rgba(37,211,102,0.12)", borderRadius: 14 },
   tableWrap: { overflowX: "auto", borderRadius: 14, border: "1px solid rgba(37,211,102,0.12)", background: "#0c1711" },
   table: { width: "100%", borderCollapse: "collapse" },
-  th: {
-    fontFamily: "'Sora', sans-serif", fontSize: "0.72rem", fontWeight: 600,
-    textTransform: "uppercase", letterSpacing: "0.08em", color: "#25D366",
-    padding: "14px 18px", textAlign: "left", borderBottom: "1px solid rgba(37,211,102,0.1)",
-  },
+  th: { fontFamily: "'Sora', sans-serif", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#25D366", padding: "14px 18px", textAlign: "left", borderBottom: "1px solid rgba(37,211,102,0.1)" },
   td: { padding: "13px 18px", borderBottom: "1px solid rgba(37,211,102,0.06)", fontSize: "0.92rem", color: "#c8dece" },
-  vcfBox: {
-    marginTop: 28, background: "#0c1711", border: "1px solid rgba(37,211,102,0.12)",
-    borderRadius: 14, padding: "22px 26px",
-  },
+  vcfBox:   { marginTop: 28, background: "#0c1711", border: "1px solid rgba(37,211,102,0.12)", borderRadius: 14, padding: "22px 26px" },
   vcfTitle: { fontFamily: "'Sora', sans-serif", fontSize: "0.9rem", color: "#25D366", marginBottom: 12, fontWeight: 600 },
-  vcfList: { paddingLeft: 18, display: "flex", flexDirection: "column", gap: 10, fontSize: "0.88rem", color: "#7aaa88", lineHeight: 1.6 },
-  btnDelete: {
-    background: "none", border: "1px solid rgba(220,50,50,0.25)", color: "#f87171",
-    borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "0.8rem",
-    transition: "background 0.15s",
-  },
-  btnConfirmYes: {
-    background: "rgba(220,50,50,0.15)", border: "1px solid rgba(220,50,50,0.3)",
-    color: "#f87171", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: "0.75rem",
-  },
-  btnConfirmNo: {
-    background: "rgba(37,211,102,0.08)", border: "1px solid rgba(37,211,102,0.2)",
-    color: "#4ade80", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: "0.75rem",
-  },
+  vcfList:  { paddingLeft: 18, display: "flex", flexDirection: "column", gap: 10, fontSize: "0.88rem", color: "#7aaa88", lineHeight: 1.6 },
+  btnDelete:     { background: "none", border: "1px solid rgba(220,50,50,0.25)", color: "#f87171", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: "0.8rem" },
+  btnConfirmYes: { background: "rgba(220,50,50,0.15)", border: "1px solid rgba(220,50,50,0.3)", color: "#f87171", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: "0.75rem" },
+  btnConfirmNo:  { background: "rgba(37,211,102,0.08)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: "0.75rem" },
 };
