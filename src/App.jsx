@@ -184,9 +184,6 @@ function FormPage({ onSwitch }) {
               Your contact has been saved as <strong style={{ color: "#25D366" }}>MCG {savedName}</strong>. Watch out for the MCG_ContactsGain_May2026.vcf file in the group — import it to connect with everyone!
             </p>
             <button style={S.btnOutline} onClick={() => setStatus("idle")}>
-              ← Submit another contact
-            </button>
-          </div>
         ) : (
           /* ── FORM FIELDS ── */
           <>
@@ -198,7 +195,7 @@ function FormPage({ onSwitch }) {
                 <div style={S.inputRow}>
                   <span style={S.prefix}>{PREFIX}</span>
                   <input
-                    style={S.prefixInput} type="text" placeholder="Chidi Okeke"
+                    style={S.prefixInput} type="text" placeholder="Umar Ahmad"
                     value={name} onChange={e => { setName(e.target.value); setStatus("idle"); }}
                   />
                 </div>
@@ -251,7 +248,7 @@ function FormPage({ onSwitch }) {
               onClick={handleSubmit}
               disabled={status === "loading" || dupStatus === "duplicate"}
             >
-              {status === "loading" ? "Saving…" : "Submit & Join MCG 300.0 →"}
+              {status === "loading" ? "Saving…" : "Submit →"}
             </button>
           </>
         )}
