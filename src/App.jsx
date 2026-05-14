@@ -911,11 +911,8 @@ function FormPage({ onSwitch }) {
                   <div style={S.slotBadge}>Slot #{slotResult} of 300</div>
                 )}
                 <p style={S.successMsg}>
-                  Your contact is saved. Watch out for <strong>MCG_ContactsGain_May2026.vcf</strong> in the group — import it to activate your full network.
+                  Successfully, kindly return to the admin in order for you to be added to the main group.
                 </p>
-                <button style={S.btnOutline} onClick={() => setStatus("idle")}>
-                  Submit Another →
-                </button>
               </div>
             ) : isFull ? (
               <div style={S.fullWrap}>
