@@ -129,7 +129,7 @@ function FormPage({ onSwitch }) {
           <div style={S.proofRow}>
             <div style={S.proofPill}>🇳🇬 Nigeria-Based</div>
             <div style={S.proofPill}>✅ Verified Members</div>
-            <div style={S.proofPill}>⚡ MCG Prefixed</div>
+            <div style={S.proofPill}>⚡Social Networking</div>
           </div>
 
           {/* Slot urgency */}
@@ -193,13 +193,7 @@ function FormPage({ onSwitch }) {
                 {slotResult && (
                   <div style={S.slotBadge}>Slot #{slotResult} of 300</div>
                 )}
-                <p style={S.successMsg}>
-                  Your contact is saved. Watch out for <strong>MCG_ContactsGain_May2026.vcf</strong> in the group — import it to activate your full network.
-                </p>
-                <button style={S.btnOutline} onClick={() => setStatus("idle")}>
-                  Submit Another →
-                </button>
-              </div>
+              
             ) : isFull ? (
               /* ── FULL ── */
               <div style={S.fullWrap}>
@@ -250,40 +244,19 @@ function FormPage({ onSwitch }) {
                         placeholder="08012345678"
                         value={phone}
                         onChange={e => handlePhoneChange(e.target.value)}
-                      />
-                      <span style={S.fieldIcon}>
-                        {dupStatus === "checking"  && <span className="spin" style={{ color: "#ffd600" }}>⟳</span>}
-                        {dupStatus === "clear"     && <span style={{ color: "#4facfe" }}>✓</span>}
-                        {dupStatus === "duplicate" && <span style={{ color: "#ff4444" }}>✕</span>}
-                      </span>
-                    </div>
-                    {dupStatus === "duplicate" && (
-                      <p style={{ ...S.fieldHint, color: "#ff6b6b" }}>⚠️ Number already registered</p>
-                    )}
-                    {dupStatus === "clear" && (
-                      <p style={{ ...S.fieldHint, color: "#4facfe" }}>✓ Number is available</p>
-                    )}
-                    {dupStatus === "idle" && (
-                      <p style={S.fieldHint}>No country code needed — enter normally</p>
-                    )}
-                  </div>
-                </div>
+                      
 
                 {/* Error messages */}
                 {status === "error"    && <Alert>Please fill in both your name and number.</Alert>}
                 {status === "badphone" && <Alert>Enter a valid Nigerian number (e.g. 08012345678).</Alert>}
-                {status === "dupBlock" && <Alert>This number is already registered in MCG 300.0.</Alert>}
 
                 {/* Submit */}
                 <button
                   className="btn-submit"
                   style={{
                     ...S.btnSubmit,
-                    opacity: status === "loading" || dupStatus === "duplicate" ? 0.6 : 1,
-                    cursor: dupStatus === "duplicate" ? "not-allowed" : "pointer",
                   }}
                   onClick={handleSubmit}
-                  disabled={status === "loading" || dupStatus === "duplicate"}
                 >
                   {status === "loading" ? (
                     <span style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "center" }}>
@@ -390,16 +363,10 @@ function AdminPage({ onSwitch }) {
         )}
       </div>
 
-      {/* Security note */}
-      <div style={A.secNote}>
-        🔒 Admin secret verified on Google's backend only — never exposed in page source
-      </div>
-
       {!fetched ? (
         <div style={A.authCard}>
           <div style={A.authIcon}>🔐</div>
           <h3 style={A.authH}>Admin Access</h3>
-          <p style={A.authSub}>Your secret is verified server-side — never visible in browser code</p>
           <input
             className="field-input"
             style={{ ...A.input, marginBottom: 14 }}
