@@ -911,7 +911,7 @@ function FormPage({ onSwitch }) {
                   <div style={S.slotBadge}>Slot #{slotResult} of 300</div>
                 )}
                 <p style={S.successMsg}>
-                  Successfully, kindly return to the admin in order for you to be added to the main group.
+                  Your registration was successful! Please return to the WhatsApp group admin and notify them that you have submitted your contact details. The admin will then add you to the main <strong style={{ color: "#4facfe" }}>MCG 300.0</strong> WhatsApp group. Welcome to the network! 🎉
                 </p>
               </div>
             ) : isFull ? (
