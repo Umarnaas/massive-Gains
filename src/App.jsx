@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcICESZfVwhWdwqHQduZtt6vNZnEAh-RiT0nenIAxibRShKHryFwR6R5jvoniBezwp3Q/exec";
 const MAX_SLOTS  = 300;
 const FILE_NAME  = "MCG_ContactsGain_May2026";
-const PREFIX     = "MCG";
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -33,6 +32,752 @@ function downloadVCF(contacts) {
   setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 300);
 }
 
+// ─── Alert Component ──────────────────────────────────────────
+
+function Alert({ children }) {
+  return (
+    <div style={{
+      background: "rgba(255,68,68,0.1)",
+      border: "1px solid rgba(255,68,68,0.4)",
+      borderRadius: 10,
+      padding: "10px 14px",
+      color: "#ff8080",
+      fontSize: "0.83rem",
+      marginBottom: 14,
+      letterSpacing: "0.01em",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Shared CSS ───────────────────────────────────────────────
+
+const css = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body { background: #050a14; }
+
+  .bg-grid {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(79,172,254,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,172,254,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .orb {
+    position: fixed; border-radius: 50%; filter: blur(80px);
+    pointer-events: none; z-index: 0; opacity: 0.18;
+  }
+  .orb1 { width: 480px; height: 480px; background: #4facfe; top: -120px; right: -80px; }
+  .orb2 { width: 380px; height: 380px; background: #00f2fe; bottom: -80px; left: -80px; }
+  .orb3 { width: 260px; height: 260px; background: #a78bfa; top: 40%; left: 30%; opacity: 0.09; }
+
+  .top-line {
+    position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 100;
+    background: linear-gradient(90deg, transparent, #4facfe, #00f2fe, transparent);
+  }
+
+  .field-input {
+    width: 100%;
+    background: rgba(10,20,40,0.7);
+    border: 1.5px solid rgba(79,172,254,0.2);
+    border-radius: 12px;
+    color: #e8f0ff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    padding: 13px 16px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field-input:focus {
+    border-color: #4facfe;
+    box-shadow: 0 0 0 3px rgba(79,172,254,0.12);
+  }
+  .field-input::placeholder { color: #3d4f70; }
+
+  .btn-submit {
+    width: 100%;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: #050a14;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    box-shadow: 0 0 28px rgba(79,172,254,0.35);
+  }
+  .btn-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(79,172,254,0.5);
+  }
+  .btn-submit:active:not(:disabled) { transform: translateY(0); }
+
+  .success-ring {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: rgba(79,172,254,0.12);
+    border: 2px solid rgba(79,172,254,0.4);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+    animation: pulseRing 2s ease infinite;
+  }
+  @keyframes pulseRing {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(79,172,254,0.3); }
+    50%       { box-shadow: 0 0 0 14px rgba(79,172,254,0); }
+  }
+
+  .urgency-fill {
+    height: 100%; border-radius: 99px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .spin { display: inline-block; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .table-row { transition: background 0.15s; }
+  .table-row:hover { background: rgba(79,172,254,0.05); }
+
+  @media (max-width: 860px) {
+    .wrapper-grid { flex-direction: column !important; }
+    .hero-panel   { min-width: unset !important; }
+  }
+`;
+
+// ─── Styles ───────────────────────────────────────────────────
+
+const S = {
+  page: {
+    minHeight: "100vh",
+    background: "#050a14",
+    fontFamily: "'DM Sans', sans-serif",
+    position: "relative",
+    overflow: "hidden",
+    paddingBottom: 60,
+  },
+  wrapper: {
+    display: "flex",
+    gap: 48,
+    maxWidth: 1100,
+    margin: "0 auto",
+    padding: "70px 24px 40px",
+    position: "relative",
+    zIndex: 1,
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+  },
+  hero: {
+    flex: "1 1 340px",
+    minWidth: 300,
+    paddingTop: 8,
+  },
+  heroPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    background: "rgba(79,172,254,0.1)",
+    border: "1px solid rgba(79,172,254,0.25)",
+    borderRadius: 99,
+    padding: "6px 14px",
+    fontSize: "0.72rem",
+    fontWeight: 600,
+    color: "#4facfe",
+    letterSpacing: "0.08em",
+    marginBottom: 28,
+  },
+  pillDot: {
+    width: 7, height: 7, borderRadius: "50%",
+    background: "#4facfe",
+    boxShadow: "0 0 8px #4facfe",
+    display: "inline-block",
+  },
+  heroH1: {
+    fontFamily: "'Syne', sans-serif",
+    lineHeight: 0.92,
+    marginBottom: 22,
+  },
+  heroLine1: {
+    display: "block",
+    fontSize: "clamp(2.6rem, 6vw, 4rem)",
+    color: "#e8f0ff",
+    fontWeight: 800,
+  },
+  heroLine2: {
+    display: "block",
+    fontSize: "clamp(3.2rem, 8vw, 5.2rem)",
+    background: "linear-gradient(135deg, #4facfe, #00f2fe)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    fontWeight: 900,
+  },
+  heroLine3: {
+    display: "block",
+    fontSize: "clamp(1.6rem, 4vw, 2.4rem)",
+    color: "#3d5070",
+    fontWeight: 700,
+    letterSpacing: "0.15em",
+  },
+  heroSub: {
+    color: "#8a9bbf",
+    fontSize: "0.96rem",
+    lineHeight: 1.65,
+    marginBottom: 28,
+    maxWidth: 420,
+  },
+  proofRow: {
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+    marginBottom: 28,
+  },
+  proofPill: {
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.09)",
+    borderRadius: 8,
+    padding: "6px 12px",
+    fontSize: "0.78rem",
+    color: "#8a9bbf",
+    fontWeight: 500,
+  },
+  urgencyBox: {
+    background: "rgba(10,20,40,0.6)",
+    border: "1px solid rgba(79,172,254,0.15)",
+    borderRadius: 14,
+    padding: "16px 18px",
+    marginBottom: 28,
+  },
+  urgencyTop: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  urgencyLabel: {
+    fontSize: "0.83rem",
+    fontWeight: 600,
+    color: "#e8f0ff",
+  },
+  urgencyCount: {
+    fontSize: "0.78rem",
+    color: "#3d4f70",
+    fontFamily: "monospace",
+  },
+  urgencyTrack: {
+    height: 6,
+    background: "rgba(255,255,255,0.06)",
+    borderRadius: 99,
+    overflow: "hidden",
+  },
+  featureList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  featureItem: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  featureIcon: {
+    fontSize: "1.1rem",
+    lineHeight: 1.4,
+    flexShrink: 0,
+  },
+  featureText: {
+    fontSize: "0.88rem",
+    color: "#8a9bbf",
+    lineHeight: 1.5,
+  },
+  formWrap: {
+    flex: "1 1 360px",
+    minWidth: 320,
+  },
+  card: {
+    background: "rgba(10,18,35,0.85)",
+    border: "1px solid rgba(79,172,254,0.14)",
+    borderRadius: 24,
+    padding: "36px 32px 28px",
+    backdropFilter: "blur(24px)",
+    boxShadow: "0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
+    position: "relative",
+  },
+  cardBadge: {
+    position: "absolute",
+    top: -14,
+    left: "50%",
+    transform: "translateX(-50%)",
+  },
+  cardBadgeInner: {
+    background: "linear-gradient(135deg, #4facfe, #00f2fe)",
+    color: "#050a14",
+    fontSize: "0.65rem",
+    fontWeight: 800,
+    letterSpacing: "0.12em",
+    fontFamily: "'Syne', sans-serif",
+    padding: "4px 14px",
+    borderRadius: 99,
+  },
+  cardH: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: "1.6rem",
+    fontWeight: 800,
+    color: "#e8f0ff",
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  cardSub: {
+    color: "#4d6080",
+    fontSize: "0.86rem",
+    marginBottom: 28,
+    lineHeight: 1.5,
+  },
+  formFields: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 20,
+    marginBottom: 20,
+  },
+  fieldGroup: { display: "flex", flexDirection: "column", gap: 6 },
+  fieldLabel: {
+    fontSize: "0.68rem",
+    fontWeight: 700,
+    letterSpacing: "0.1em",
+    color: "#3d5070",
+  },
+  prefixWrap: {
+    display: "flex",
+    borderRadius: 12,
+    overflow: "hidden",
+    border: "1.5px solid rgba(79,172,254,0.2)",
+    background: "rgba(10,20,40,0.7)",
+    transition: "border-color 0.2s",
+  },
+  prefixTag: {
+    background: "rgba(79,172,254,0.12)",
+    color: "#4facfe",
+    fontFamily: "'Syne', sans-serif",
+    fontWeight: 800,
+    fontSize: "0.78rem",
+    padding: "0 14px",
+    display: "flex",
+    alignItems: "center",
+    borderRight: "1px solid rgba(79,172,254,0.15)",
+    letterSpacing: "0.06em",
+    flexShrink: 0,
+  },
+  prefixInput: {
+    flex: 1,
+    background: "transparent",
+    border: "none",
+    borderRadius: 0,
+    color: "#e8f0ff",
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: "0.95rem",
+    padding: "13px 14px",
+    outline: "none",
+  },
+  fieldInput: {
+    width: "100%",
+    background: "rgba(10,20,40,0.7)",
+    border: "1.5px solid rgba(79,172,254,0.2)",
+    borderRadius: 12,
+    color: "#e8f0ff",
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: "0.95rem",
+    padding: "13px 16px",
+    outline: "none",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+  },
+  fieldHint: {
+    fontSize: "0.74rem",
+    color: "#3d4f70",
+    marginTop: 2,
+  },
+  btnSubmit: {
+    width: "100%",
+    background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+    color: "#050a14",
+    fontFamily: "'Syne', sans-serif",
+    fontWeight: 800,
+    fontSize: "1rem",
+    letterSpacing: "0.04em",
+    border: "none",
+    borderRadius: 14,
+    padding: 16,
+    cursor: "pointer",
+    transition: "transform 0.15s, box-shadow 0.15s, opacity 0.15s",
+    boxShadow: "0 0 28px rgba(79,172,254,0.35)",
+    marginBottom: 16,
+  },
+  trustLine: {
+    textAlign: "center",
+    fontSize: "0.74rem",
+    color: "#2d3d55",
+    marginBottom: 20,
+  },
+  adminBtn: {
+    background: "none",
+    border: "none",
+    color: "#2d3d55",
+    fontSize: "0.72rem",
+    cursor: "pointer",
+    width: "100%",
+    textAlign: "right",
+    padding: "4px 0 0",
+    fontFamily: "'DM Sans', sans-serif",
+    transition: "color 0.2s",
+  },
+  btnOutline: {
+    background: "transparent",
+    border: "1.5px solid rgba(79,172,254,0.35)",
+    borderRadius: 12,
+    color: "#4facfe",
+    fontFamily: "'Syne', sans-serif",
+    fontWeight: 700,
+    fontSize: "0.88rem",
+    padding: "12px 24px",
+    cursor: "pointer",
+    transition: "background 0.2s, border-color 0.2s",
+    marginTop: 4,
+  },
+  successWrap: {
+    textAlign: "center",
+    padding: "12px 0 8px",
+  },
+  successH: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: "1.8rem",
+    fontWeight: 900,
+    color: "#e8f0ff",
+    marginBottom: 6,
+  },
+  successName: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: "1.15rem",
+    fontWeight: 800,
+    background: "linear-gradient(135deg, #4facfe, #00f2fe)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    marginBottom: 12,
+  },
+  slotBadge: {
+    display: "inline-block",
+    background: "rgba(79,172,254,0.1)",
+    border: "1px solid rgba(79,172,254,0.3)",
+    borderRadius: 99,
+    padding: "4px 16px",
+    fontSize: "0.78rem",
+    color: "#4facfe",
+    fontWeight: 600,
+    marginBottom: 16,
+    fontFamily: "monospace",
+  },
+  successMsg: {
+    color: "#8a9bbf",
+    fontSize: "0.86rem",
+    lineHeight: 1.6,
+    marginBottom: 22,
+  },
+  fullWrap: {
+    textAlign: "center",
+    padding: "20px 0",
+  },
+  fullH: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: "1.6rem",
+    fontWeight: 800,
+    color: "#e8f0ff",
+    marginBottom: 10,
+  },
+  fullMsg: {
+    color: "#8a9bbf",
+    fontSize: "0.88rem",
+    lineHeight: 1.6,
+  },
+  footer: {
+    position: "relative",
+    zIndex: 1,
+    textAlign: "center",
+    paddingTop: 10,
+  },
+  footerText: {
+    color: "#1e2d45",
+    fontSize: "0.74rem",
+    letterSpacing: "0.08em",
+  },
+};
+
+// ─── Admin Styles ─────────────────────────────────────────────
+
+const A = {
+  page: {
+    minHeight: "100vh",
+    background: "#050a14",
+    fontFamily: "'DM Sans', sans-serif",
+    padding: "0 0 60px",
+    position: "relative",
+    overflow: "hidden",
+  },
+  header: {
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    padding: "20px 32px",
+    borderBottom: "1px solid rgba(79,172,254,0.1)",
+    background: "rgba(5,10,20,0.8)",
+    backdropFilter: "blur(16px)",
+    flexWrap: "wrap",
+  },
+  btnBack: {
+    background: "none",
+    border: "1px solid rgba(79,172,254,0.2)",
+    borderRadius: 10,
+    color: "#4facfe",
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: "0.84rem",
+    padding: "8px 16px",
+    cursor: "pointer",
+    fontWeight: 600,
+    transition: "background 0.2s",
+    flexShrink: 0,
+  },
+  headerBadge: {
+    background: "linear-gradient(135deg, #4facfe, #00f2fe)",
+    color: "#050a14",
+    fontFamily: "'Syne', sans-serif",
+    fontWeight: 900,
+    fontSize: "0.78rem",
+    padding: "4px 10px",
+    borderRadius: 8,
+    letterSpacing: "0.06em",
+  },
+  h2: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: "1.2rem",
+    fontWeight: 800,
+    color: "#e8f0ff",
+  },
+  countBadge: {
+    background: "rgba(79,172,254,0.1)",
+    border: "1px solid rgba(79,172,254,0.25)",
+    borderRadius: 99,
+    padding: "3px 12px",
+    fontSize: "0.75rem",
+    color: "#4facfe",
+    fontFamily: "monospace",
+    fontWeight: 700,
+  },
+  btnGhost: {
+    background: "transparent",
+    border: "1px solid rgba(79,172,254,0.25)",
+    borderRadius: 10,
+    color: "#4facfe",
+    fontFamily: "'DM Sans', sans-serif",
+    fontWeight: 600,
+    fontSize: "0.84rem",
+    padding: "8px 16px",
+    cursor: "pointer",
+    transition: "background 0.2s",
+  },
+  btnBlue: {
+    background: "linear-gradient(135deg, #4facfe, #00f2fe)",
+    border: "none",
+    borderRadius: 10,
+    color: "#050a14",
+    fontFamily: "'Syne', sans-serif",
+    fontWeight: 800,
+    fontSize: "0.84rem",
+    padding: "9px 18px",
+    cursor: "pointer",
+    boxShadow: "0 0 20px rgba(79,172,254,0.3)",
+    transition: "opacity 0.2s",
+    letterSpacing: "0.03em",
+  },
+  authCard: {
+    maxWidth: 420,
+    margin: "80px auto",
+    background: "rgba(10,18,35,0.85)",
+    border: "1px solid rgba(79,172,254,0.14)",
+    borderRadius: 24,
+    padding: "40px 36px",
+    textAlign: "center",
+    backdropFilter: "blur(20px)",
+    boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
+    position: "relative",
+    zIndex: 1,
+  },
+  authIcon: {
+    fontSize: "2.8rem",
+    marginBottom: 16,
+  },
+  authH: {
+    fontFamily: "'Syne', sans-serif",
+    fontSize: "1.5rem",
+    fontWeight: 800,
+    color: "#e8f0ff",
+    marginBottom: 6,
+  },
+  authSub: {
+    color: "#4d6080",
+    fontSize: "0.84rem",
+    lineHeight: 1.5,
+    marginBottom: 24,
+  },
+  input: {
+    width: "100%",
+    background: "rgba(10,20,40,0.7)",
+    border: "1.5px solid rgba(79,172,254,0.2)",
+    borderRadius: 12,
+    color: "#e8f0ff",
+    fontFamily: "'DM Sans', sans-serif",
+    fontSize: "0.95rem",
+    padding: "13px 16px",
+    outline: "none",
+    transition: "border-color 0.2s",
+    textAlign: "left",
+    display: "block",
+  },
+  progressCard: {
+    background: "rgba(10,18,35,0.6)",
+    border: "1px solid rgba(79,172,254,0.1)",
+    borderRadius: 16,
+    padding: "18px 22px",
+    margin: "24px 32px 0",
+    position: "relative",
+    zIndex: 1,
+  },
+  progressRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  progressLabel: {
+    fontSize: "0.84rem",
+    fontWeight: 600,
+  },
+  progressCount: {
+    fontFamily: "monospace",
+    fontSize: "0.78rem",
+    color: "#3d4f70",
+  },
+  track: {
+    height: 6,
+    background: "rgba(255,255,255,0.05)",
+    borderRadius: 99,
+    overflow: "hidden",
+  },
+  fill: {
+    height: "100%",
+    borderRadius: 99,
+    transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)",
+  },
+  tableWrap: {
+    margin: "0 32px",
+    border: "1px solid rgba(79,172,254,0.1)",
+    borderRadius: 16,
+    overflow: "hidden",
+    position: "relative",
+    zIndex: 1,
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: "0.86rem",
+  },
+  th: {
+    padding: "12px 16px",
+    textAlign: "left",
+    fontSize: "0.68rem",
+    fontWeight: 700,
+    letterSpacing: "0.1em",
+    color: "#3d4f70",
+    background: "rgba(10,20,40,0.9)",
+    borderBottom: "1px solid rgba(79,172,254,0.08)",
+    textTransform: "uppercase",
+  },
+  td: {
+    padding: "11px 16px",
+    color: "#8a9bbf",
+    borderBottom: "1px solid rgba(79,172,254,0.05)",
+    verticalAlign: "middle",
+  },
+  btnDel: {
+    background: "rgba(255,68,68,0.1)",
+    border: "1px solid rgba(255,68,68,0.25)",
+    borderRadius: 8,
+    color: "#ff6b6b",
+    fontSize: "0.75rem",
+    padding: "5px 10px",
+    cursor: "pointer",
+    transition: "background 0.15s",
+    fontFamily: "'DM Sans', sans-serif",
+    fontWeight: 700,
+  },
+  btnYes: {
+    background: "rgba(255,68,68,0.2)",
+    border: "1px solid rgba(255,68,68,0.4)",
+    borderRadius: 7,
+    color: "#ff6b6b",
+    fontSize: "0.74rem",
+    padding: "4px 10px",
+    cursor: "pointer",
+    fontFamily: "'DM Sans', sans-serif",
+    fontWeight: 700,
+  },
+  btnNo: {
+    background: "rgba(79,172,254,0.1)",
+    border: "1px solid rgba(79,172,254,0.25)",
+    borderRadius: 7,
+    color: "#4facfe",
+    fontSize: "0.74rem",
+    padding: "4px 10px",
+    cursor: "pointer",
+    fontFamily: "'DM Sans', sans-serif",
+    fontWeight: 700,
+  },
+  empty: {
+    textAlign: "center",
+    color: "#2d3d55",
+    padding: "60px 0",
+    fontSize: "0.9rem",
+    position: "relative",
+    zIndex: 1,
+  },
+  guideBox: {
+    margin: "24px 32px 0",
+    background: "rgba(79,172,254,0.05)",
+    border: "1px solid rgba(79,172,254,0.12)",
+    borderRadius: 16,
+    padding: "20px 22px",
+    position: "relative",
+    zIndex: 1,
+  },
+  guideTitle: {
+    fontFamily: "'Syne', sans-serif",
+    fontWeight: 800,
+    fontSize: "0.88rem",
+    color: "#4facfe",
+    marginBottom: 12,
+    letterSpacing: "0.04em",
+  },
+  guideStep: {
+    fontSize: "0.83rem",
+    color: "#6a7f9f",
+    lineHeight: 1.7,
+    paddingLeft: 4,
+  },
+};
+
 // ─── Form Page ────────────────────────────────────────────────
 
 function FormPage({ onSwitch }) {
@@ -42,8 +787,6 @@ function FormPage({ onSwitch }) {
   const [slotInfo,   setSlotInfo]   = useState(null);
   const [slotResult, setSlotResult] = useState(null);
   const [savedName,  setSavedName]  = useState("");
-  const [dupStatus,  setDupStatus]  = useState("idle");
-  const debounce = useRef(null);
 
   useEffect(() => {
     fetch(`${SCRIPT_URL}?action=count`)
@@ -52,28 +795,10 @@ function FormPage({ onSwitch }) {
       .catch(() => {});
   }, []);
 
-  function handlePhoneChange(val) {
-    setPhone(val); setStatus("idle");
-    const digits = val.replace(/[^\d]/g, "");
-    if (digits.length < 8) { setDupStatus("idle"); return; }
-    clearTimeout(debounce.current);
-    setDupStatus("checking");
-    debounce.current = setTimeout(async () => {
-      try {
-        const form = new FormData();
-        form.append("action", "check");
-        form.append("phone", val.trim());
-        await fetch(SCRIPT_URL, { method: "POST", body: form, mode: "no-cors" });
-        setDupStatus("clear");
-      } catch { setDupStatus("idle"); }
-    }, 600);
-  }
-
   async function handleSubmit() {
     if (!name.trim() || !phone.trim()) { setStatus("error"); return; }
     const digits = phone.replace(/[^\d]/g, "");
     if (digits.length < 8) { setStatus("badphone"); return; }
-    if (dupStatus === "duplicate") { setStatus("dupBlock"); return; }
     setStatus("loading");
     try {
       const form = new FormData();
@@ -86,31 +811,28 @@ function FormPage({ onSwitch }) {
       setSlotResult(newCount);
       setSavedName(name.trim());
       setStatus("success");
-      setName(""); setPhone(""); setDupStatus("idle");
+      setName(""); setPhone("");
     } catch { setStatus("error"); }
   }
 
-  const isFull   = slotInfo && slotInfo.count >= MAX_SLOTS;
-  const pct      = slotInfo ? Math.min(100, Math.round((slotInfo.count / MAX_SLOTS) * 100)) : 0;
+  const isFull    = slotInfo && slotInfo.count >= MAX_SLOTS;
+  const pct       = slotInfo ? Math.min(100, Math.round((slotInfo.count / MAX_SLOTS) * 100)) : 0;
   const slotsLeft = slotInfo ? slotInfo.remaining : MAX_SLOTS;
 
   return (
     <div style={S.page}>
       <style>{css}</style>
 
-      {/* Background layers */}
       <div className="bg-grid" />
       <div className="orb orb1" />
       <div className="orb orb2" />
       <div className="orb orb3" />
-
-      {/* Top accent line */}
       <div className="top-line" />
 
-      <div style={S.wrapper}>
+      <div style={S.wrapper} className="wrapper-grid">
 
-        {/* ── LEFT PANEL: Hero copy ── */}
-        <div style={S.hero}>
+        {/* ── LEFT PANEL ── */}
+        <div style={S.hero} className="hero-panel">
           <div style={S.heroPill}>
             <span style={S.pillDot} /> EXCLUSIVE NETWORK · 300 SLOTS ONLY
           </div>
@@ -122,17 +844,15 @@ function FormPage({ onSwitch }) {
           </h1>
 
           <p style={S.heroSub}>
-            A verified Nigerian WhatsApp network built for serious entrepreneurs, hustlers & go-getters. One import. 300 connections. Unlimited opportunity.
+            A verified Nigerian WhatsApp network built for serious entrepreneurs, hustlers &amp; go-getters. One import. 300 connections. Unlimited opportunity.
           </p>
 
-          {/* Social proof pills */}
           <div style={S.proofRow}>
             <div style={S.proofPill}>🇳🇬 Nigeria-Based</div>
             <div style={S.proofPill}>✅ Verified Members</div>
-            <div style={S.proofPill}>⚡Social Networking</div>
+            <div style={S.proofPill}>⚡ MCG Prefixed</div>
           </div>
 
-          {/* Slot urgency */}
           {slotInfo && (
             <div style={S.urgencyBox}>
               <div style={S.urgencyTop}>
@@ -157,13 +877,12 @@ function FormPage({ onSwitch }) {
             </div>
           )}
 
-          {/* Features list */}
           <div style={S.featureList}>
             {[
               ["⚡", "Instant contact import via .vcf file"],
               ["👁", "See all 300 members' WhatsApp Status"],
               ["🏷️", "MCG prefix — organised & verified"],
-              ["🔒", "Duplicate-protected — one slot per number"],
+              ["🔒", "300-slot limited network — claim yours now"],
             ].map(([icon, text]) => (
               <div key={text} style={S.featureItem}>
                 <span style={S.featureIcon}>{icon}</span>
@@ -177,13 +896,11 @@ function FormPage({ onSwitch }) {
         <div style={S.formWrap}>
           <div style={S.card}>
 
-            {/* Card top badge */}
             <div style={S.cardBadge}>
               <span style={S.cardBadgeInner}>SECURE REGISTRATION</span>
             </div>
 
             {status === "success" ? (
-              /* ── SUCCESS ── */
               <div style={S.successWrap}>
                 <div className="success-ring">
                   <span style={{ fontSize: "2.2rem" }}>✅</span>
@@ -193,16 +910,20 @@ function FormPage({ onSwitch }) {
                 {slotResult && (
                   <div style={S.slotBadge}>Slot #{slotResult} of 300</div>
                 )}
-              
+                <p style={S.successMsg}>
+                  Your contact is saved. Watch out for <strong>MCG_ContactsGain_May2026.vcf</strong> in the group — import it to activate your full network.
+                </p>
+                <button style={S.btnOutline} onClick={() => setStatus("idle")}>
+                  Submit Another →
+                </button>
+              </div>
             ) : isFull ? (
-              /* ── FULL ── */
               <div style={S.fullWrap}>
                 <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🔒</span>
                 <h3 style={S.fullH}>Registration Closed</h3>
                 <p style={S.fullMsg}>All 300 MCG slots have been filled. The network is complete!</p>
               </div>
             ) : (
-              /* ── FORM ── */
               <>
                 <h2 style={S.cardH}>Claim Your Slot</h2>
                 <p style={S.cardSub}>Fill in your details below to join the MCG 300.0 network</p>
@@ -228,35 +949,30 @@ function FormPage({ onSwitch }) {
                   {/* Phone */}
                   <div style={S.fieldGroup}>
                     <label style={S.fieldLabel}>WHATSAPP NUMBER</label>
-                    <div style={{ position: "relative" }}>
-                      <input
-                        className="field-input"
-                        style={{
-                          ...S.fieldInput,
-                          borderColor: dupStatus === "duplicate"
-                            ? "#ff4444"
-                            : dupStatus === "clear"
-                            ? "#4facfe"
-                            : "rgba(79,172,254,0.2)",
-                          paddingRight: 48,
-                        }}
-                        type="tel"
-                        placeholder="08012345678"
-                        value={phone}
-                        onChange={e => handlePhoneChange(e.target.value)}
-                      
+                    <input
+                      className="field-input"
+                      style={S.fieldInput}
+                      type="tel"
+                      placeholder="08012345678"
+                      value={phone}
+                      onChange={e => { setPhone(e.target.value); setStatus("idle"); }}
+                    />
+                    <p style={S.fieldHint}>No country code needed — enter normally</p>
+                  </div>
+                </div>
 
-                {/* Error messages */}
                 {status === "error"    && <Alert>Please fill in both your name and number.</Alert>}
                 {status === "badphone" && <Alert>Enter a valid Nigerian number (e.g. 08012345678).</Alert>}
 
-                {/* Submit */}
                 <button
                   className="btn-submit"
                   style={{
                     ...S.btnSubmit,
+                    opacity: status === "loading" ? 0.6 : 1,
+                    cursor: status === "loading" ? "not-allowed" : "pointer",
                   }}
                   onClick={handleSubmit}
+                  disabled={status === "loading"}
                 >
                   {status === "loading" ? (
                     <span style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "center" }}>
@@ -278,7 +994,6 @@ function FormPage({ onSwitch }) {
         </div>
       </div>
 
-      {/* Footer */}
       <div style={S.footer}>
         <span style={S.footerText}>MCG 300.0 · Massive Gains Network · 🇳🇬 Nigeria</span>
       </div>
@@ -367,6 +1082,7 @@ function AdminPage({ onSwitch }) {
         <div style={A.authCard}>
           <div style={A.authIcon}>🔐</div>
           <h3 style={A.authH}>Admin Access</h3>
+          <p style={A.authSub}>Enter your secret to view and manage all registered contacts</p>
           <input
             className="field-input"
             style={{ ...A.input, marginBottom: 14 }}
@@ -399,7 +1115,7 @@ function AdminPage({ onSwitch }) {
           {/* Search */}
           <input
             className="field-input"
-            style={{ ...A.input, marginBottom: 18 }}
+            style={{ ...A.input, margin: "20px 32px 18px", width: "calc(100% - 64px)" }}
             type="text"
             placeholder="🔍  Search by name or number…"
             value={search}
@@ -457,30 +1173,17 @@ function AdminPage({ onSwitch }) {
 
           {/* VCF guide */}
           <div style={A.guideBox}>
-            <p style={A.guideTitle}>📲 How to distribute the vCard</p>
-            <ol style={A.guideList}>
-              <li>Click <strong>Download .vcf</strong> above</li>
-              <li>Open your WhatsApp group → tap attach → send as <strong>Document</strong></li>
-              <li>Members tap the file → <strong>Import All</strong> → 300 contacts saved with MCG prefix</li>
-              <li>Everyone can now see each other's WhatsApp Status 🎉</li>
-            </ol>
+            <p style={A.guideTitle}>📲 How to distribute the .vcf file</p>
+            <p style={A.guideStep}>
+              1. Click <strong style={{ color: "#4facfe" }}>Download .vcf</strong> to save the contact file.<br />
+              2. Share <strong>MCG_ContactsGain_May2026.vcf</strong> in the WhatsApp group.<br />
+              3. Members tap the file → <em>Import All</em> — all 300 contacts added instantly.<br />
+              4. Everyone can now see each other's WhatsApp Status automatically.
+            </p>
           </div>
         </>
       )}
     </div>
-  );
-}
-
-// ─── Alert component ──────────────────────────────────────────
-
-function Alert({ children }) {
-  return (
-    <div style={{
-      background: "rgba(255,68,68,0.1)", color: "#ff8080",
-      border: "1px solid rgba(255,68,68,0.25)",
-      borderRadius: 10, padding: "11px 15px",
-      fontSize: "0.85rem", marginBottom: 14, lineHeight: 1.55,
-    }}>{children}</div>
   );
 }
 
@@ -492,478 +1195,3 @@ export default function App() {
     ? <FormPage  onSwitch={() => setPage("admin")} />
     : <AdminPage onSwitch={() => setPage("form")}  />;
 }
-
-// ─── Global CSS ───────────────────────────────────────────────
-
-const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #040b1a; font-family: 'Plus Jakarta Sans', sans-serif; }
-
-  /* ── Animated background grid ── */
-  .bg-grid {
-    position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    background-image:
-      linear-gradient(rgba(79,172,254,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(79,172,254,0.04) 1px, transparent 1px);
-    background-size: 60px 60px;
-    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
-  }
-
-  /* ── Glowing orbs ── */
-  .orb {
-    position: fixed; border-radius: 50%; pointer-events: none;
-    filter: blur(80px); z-index: 0;
-  }
-  .orb1 {
-    width: 600px; height: 600px; top: -200px; left: -150px;
-    background: radial-gradient(circle, rgba(79,172,254,0.15) 0%, transparent 70%);
-    animation: orbDrift1 18s ease-in-out infinite alternate;
-  }
-  .orb2 {
-    width: 500px; height: 500px; bottom: -150px; right: -100px;
-    background: radial-gradient(circle, rgba(102,0,255,0.12) 0%, transparent 70%);
-    animation: orbDrift2 22s ease-in-out infinite alternate;
-  }
-  .orb3 {
-    width: 350px; height: 350px; top: 40%; left: 30%;
-    background: radial-gradient(circle, rgba(255,214,0,0.05) 0%, transparent 70%);
-    animation: orbDrift3 15s ease-in-out infinite alternate;
-  }
-
-  /* ── Top shimmer line ── */
-  .top-line {
-    position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 10;
-    background: linear-gradient(90deg,
-      transparent 0%,
-      #4facfe 25%,
-      #00f2fe 50%,
-      #6600ff 75%,
-      transparent 100%
-    );
-    background-size: 300% 100%;
-    animation: shimmer 5s linear infinite;
-  }
-
-  /* ── Input focus ── */
-  .field-input {
-    transition: border-color 0.25s, box-shadow 0.25s !important;
-  }
-  .field-input:focus {
-    border-color: rgba(79,172,254,0.8) !important;
-    box-shadow: 0 0 0 4px rgba(79,172,254,0.12), 0 0 25px rgba(79,172,254,0.1) !important;
-    outline: none !important;
-  }
-  .field-input::placeholder { color: #1e3050; }
-
-  /* ── Submit button pulse ── */
-  .btn-submit { transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s; }
-  .btn-submit:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 40px rgba(79,172,254,0.5), 0 0 80px rgba(79,172,254,0.15) !important;
-  }
-  .btn-submit:active:not(:disabled) { transform: translateY(0); }
-
-  /* ── Table row hover ── */
-  .table-row { transition: background 0.15s; }
-  .table-row:hover td { background: rgba(79,172,254,0.04) !important; }
-
-  /* ── Success ring ── */
-  .success-ring {
-    width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px;
-    background: linear-gradient(135deg, rgba(79,172,254,0.15), rgba(102,0,255,0.1));
-    border: 2px solid rgba(79,172,254,0.4);
-    display: flex; align-items: center; justify-content: center;
-    animation: pulseRing 3s ease-in-out infinite;
-  }
-
-  /* ── Urgency bar fill ── */
-  .urgency-fill {
-    height: 100%; border-radius: 99px;
-    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
-    box-shadow: 0 0 12px currentColor;
-  }
-
-  /* ── Keyframes ── */
-  @keyframes shimmer {
-    0%   { background-position: -300% center; }
-    100% { background-position: 300% center; }
-  }
-  @keyframes orbDrift1 {
-    0%   { transform: translate(0,0) scale(1); }
-    100% { transform: translate(80px, 60px) scale(1.15); }
-  }
-  @keyframes orbDrift2 {
-    0%   { transform: translate(0,0) scale(1); }
-    100% { transform: translate(-60px,-80px) scale(1.1); }
-  }
-  @keyframes orbDrift3 {
-    0%   { transform: translate(0,0); }
-    100% { transform: translate(40px,-40px); }
-  }
-  @keyframes pulseRing {
-    0%,100% { box-shadow: 0 0 0 0 rgba(79,172,254,0.3); }
-    50%     { box-shadow: 0 0 0 12px rgba(79,172,254,0); }
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  .spin { display: inline-block; animation: spin 1s linear infinite; }
-
-  button { transition: filter 0.15s, transform 0.15s; }
-  button:hover:not(:disabled) { filter: brightness(1.1); }
-  button:active:not(:disabled) { transform: scale(0.97); }
-  strong { font-weight: 700; }
-`;
-
-// ─── Form Styles ──────────────────────────────────────────────
-
-const S = {
-  page: {
-    minHeight: "100vh",
-    background: "#040b1a",
-    backgroundImage: [
-      "radial-gradient(ellipse 80% 60% at 15% 50%, rgba(79,172,254,0.07) 0%, transparent 60%)",
-      "radial-gradient(ellipse 70% 50% at 85% 30%, rgba(102,0,255,0.08) 0%, transparent 60%)",
-      "radial-gradient(ellipse 60% 40% at 50% 100%, rgba(0,242,254,0.04) 0%, transparent 55%)",
-    ].join(","),
-    display: "flex", flexDirection: "column",
-    alignItems: "center", justifyContent: "center",
-    padding: "60px 20px 40px",
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-    position: "relative", zIndex: 1,
-  },
-
-  wrapper: {
-    display: "flex", flexDirection: "row", alignItems: "center",
-    gap: 60, maxWidth: 1080, width: "100%",
-    flexWrap: "wrap", justifyContent: "center",
-    position: "relative", zIndex: 2,
-  },
-
-  // Hero
-  hero: { flex: 1, minWidth: 300, maxWidth: 480 },
-  heroPill: {
-    display: "inline-flex", alignItems: "center", gap: 8,
-    background: "rgba(79,172,254,0.08)",
-    border: "1px solid rgba(79,172,254,0.2)",
-    borderRadius: 99, padding: "6px 14px",
-    fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.1em",
-    color: "#4facfe", marginBottom: 28,
-    fontFamily: "'Space Grotesk', sans-serif",
-  },
-  pillDot: {
-    width: 6, height: 6, borderRadius: "50%",
-    background: "#4facfe",
-    boxShadow: "0 0 8px #4facfe",
-    display: "inline-block",
-    animation: "pulseRing 2s ease-in-out infinite",
-  },
-  heroH1: {
-    display: "flex", flexDirection: "column",
-    marginBottom: 24, lineHeight: 1.05,
-    fontFamily: "'Space Grotesk', sans-serif",
-  },
-  heroLine1: {
-    fontSize: "clamp(2.8rem, 6vw, 4.5rem)", fontWeight: 700,
-    color: "rgba(255,255,255,0.85)", letterSpacing: "-0.03em",
-  },
-  heroLine2: {
-    fontSize: "clamp(3.2rem, 7vw, 5.5rem)", fontWeight: 800,
-    background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #6600ff 100%)",
-    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-    letterSpacing: "-0.04em",
-  },
-  heroLine3: {
-    fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 700,
-    color: "#ffd600", letterSpacing: "0.05em",
-  },
-  heroSub: {
-    fontSize: "1rem", color: "#5a7aa0", lineHeight: 1.75,
-    marginBottom: 28, maxWidth: 420,
-  },
-
-  // Social proof
-  proofRow: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 28 },
-  proofPill: {
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 99, padding: "5px 14px",
-    fontSize: "0.78rem", color: "#8a9bbf", fontWeight: 600,
-  },
-
-  // Urgency
-  urgencyBox: {
-    background: "rgba(79,172,254,0.05)", border: "1px solid rgba(79,172,254,0.15)",
-    borderRadius: 14, padding: "16px 18px", marginBottom: 28,
-  },
-  urgencyTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  urgencyLabel: { fontSize: "0.84rem", fontWeight: 700, color: "#4facfe" },
-  urgencyCount: { fontSize: "0.84rem", fontFamily: "monospace", color: "#8a9bbf", fontWeight: 700 },
-  urgencyTrack: {
-    height: 8, background: "rgba(255,255,255,0.05)",
-    borderRadius: 99, overflow: "hidden",
-    boxShadow: "inset 0 1px 3px rgba(0,0,0,0.5)",
-  },
-
-  // Features
-  featureList: { display: "flex", flexDirection: "column", gap: 12 },
-  featureItem: { display: "flex", alignItems: "center", gap: 12 },
-  featureIcon: {
-    width: 36, height: 36, borderRadius: 10,
-    background: "rgba(79,172,254,0.08)", border: "1px solid rgba(79,172,254,0.15)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: "1rem", flexShrink: 0,
-  },
-  featureText: { fontSize: "0.88rem", color: "#6a85aa", lineHeight: 1.5 },
-
-  // Form card
-  formWrap: { flex: 1, minWidth: 320, maxWidth: 440 },
-  card: {
-    background: "linear-gradient(160deg, rgba(10,20,40,0.95) 0%, rgba(6,12,28,0.98) 100%)",
-    border: "1px solid rgba(79,172,254,0.2)", borderRadius: 24,
-    padding: "36px 32px",
-    boxShadow: [
-      "0 0 0 1px rgba(79,172,254,0.05)",
-      "0 0 80px rgba(79,172,254,0.08)",
-      "0 40px 100px rgba(0,0,0,0.8)",
-      "inset 0 1px 0 rgba(255,255,255,0.06)",
-      "inset 0 -1px 0 rgba(79,172,254,0.06)",
-    ].join(","),
-    position: "relative",
-  },
-  cardBadge: {
-    display: "flex", justifyContent: "center", marginBottom: 24,
-  },
-  cardBadgeInner: {
-    background: "linear-gradient(135deg, rgba(79,172,254,0.12), rgba(102,0,255,0.08))",
-    border: "1px solid rgba(79,172,254,0.25)",
-    borderRadius: 99, padding: "5px 16px",
-    fontSize: "0.65rem", fontWeight: 800, letterSpacing: "0.15em",
-    color: "#4facfe", fontFamily: "'Space Grotesk', sans-serif",
-  },
-  cardH: {
-    fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.6rem", fontWeight: 700,
-    color: "#e8f0ff", letterSpacing: "-0.02em", marginBottom: 6, textAlign: "center",
-  },
-  cardSub: { fontSize: "0.84rem", color: "#3d5070", marginBottom: 28, textAlign: "center", lineHeight: 1.6 },
-
-  // Fields
-  formFields: { display: "flex", flexDirection: "column", gap: 18, marginBottom: 20 },
-  fieldGroup: {},
-  fieldLabel: {
-    fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.68rem", fontWeight: 700,
-    letterSpacing: "0.12em", color: "#4facfe", display: "block", marginBottom: 8,
-  },
-  prefixWrap: {
-    display: "flex", alignItems: "center",
-    background: "rgba(5,12,28,0.9)", border: "1.5px solid rgba(79,172,254,0.2)",
-    borderRadius: 12, overflow: "hidden",
-    boxShadow: "0 2px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.02)",
-  },
-  prefixTag: {
-    padding: "0 14px", fontFamily: "'Space Grotesk', sans-serif",
-    fontWeight: 800, fontSize: "0.8rem",
-    background: "linear-gradient(135deg, #4facfe, #00f2fe)",
-    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-    borderRight: "1px solid rgba(79,172,254,0.15)",
-    alignSelf: "stretch", display: "flex", alignItems: "center", whiteSpace: "nowrap",
-  },
-  prefixInput: {
-    flex: 1, background: "transparent", border: "none",
-    padding: "14px 14px", fontFamily: "'Plus Jakarta Sans', sans-serif",
-    fontSize: "1rem", color: "#c8d8f0", outline: "none",
-  },
-  fieldInput: {
-    width: "100%", background: "rgba(5,12,28,0.9)",
-    border: "1.5px solid rgba(79,172,254,0.2)", borderRadius: 12,
-    padding: "14px 46px 14px 16px",
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-    fontSize: "1rem", color: "#c8d8f0", outline: "none",
-    boxShadow: "0 2px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.02)",
-  },
-  fieldIcon: {
-    position: "absolute", right: 15, top: "50%", transform: "translateY(-50%)",
-    fontSize: "1.05rem", fontWeight: 700, pointerEvents: "none",
-  },
-  fieldHint: { fontSize: "0.76rem", color: "#2a3f5a", marginTop: 6, lineHeight: 1.5 },
-
-  // Submit
-  btnSubmit: {
-    width: "100%",
-    background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #6600ff 100%)",
-    color: "#ffffff", fontFamily: "'Space Grotesk', sans-serif",
-    fontSize: "1rem", fontWeight: 700, border: "none",
-    borderRadius: 14, padding: "16px", marginBottom: 14,
-    letterSpacing: "0.02em",
-    boxShadow: "0 4px 30px rgba(79,172,254,0.35), 0 0 60px rgba(79,172,254,0.1), inset 0 1px 0 rgba(255,255,255,0.2)",
-  },
-  trustLine: {
-    textAlign: "center", fontSize: "0.73rem", color: "#1e3050", lineHeight: 1.6,
-  },
-  adminBtn: {
-    background: "none", border: "none", color: "#1a2a40",
-    fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: "0.75rem",
-    cursor: "pointer", width: "100%", textAlign: "center",
-    padding: "8px 4px 0", fontWeight: 600,
-  },
-
-  // Success
-  successWrap: { textAlign: "center", padding: "10px 0" },
-  successH: {
-    fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.5rem", fontWeight: 800,
-    background: "linear-gradient(135deg, #4facfe, #00f2fe)",
-    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-    marginBottom: 6,
-  },
-  successName: {
-    fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "1.1rem",
-    color: "#ffd600", marginBottom: 14,
-  },
-  slotBadge: {
-    display: "inline-block",
-    background: "linear-gradient(135deg, rgba(79,172,254,0.12), rgba(102,0,255,0.08))",
-    border: "1px solid rgba(79,172,254,0.3)",
-    borderRadius: 99, padding: "5px 16px",
-    fontSize: "0.8rem", fontWeight: 700, color: "#4facfe",
-    fontFamily: "monospace", marginBottom: 20,
-  },
-  successMsg: { fontSize: "0.85rem", color: "#4a6080", lineHeight: 1.7, marginBottom: 22 },
-  btnOutline: {
-    background: "none", border: "1px solid rgba(79,172,254,0.3)", color: "#4facfe",
-    fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "0.85rem",
-    borderRadius: 10, padding: "10px 22px", cursor: "pointer",
-  },
-
-  // Full
-  fullWrap: { textAlign: "center", padding: "20px 0" },
-  fullH: {
-    fontFamily: "'Space Grotesk', sans-serif", fontWeight: 800, fontSize: "1.3rem",
-    color: "#ff6b6b", marginBottom: 12,
-  },
-  fullMsg: { fontSize: "0.88rem", color: "#6a3a3a", lineHeight: 1.65 },
-
-  // Footer
-  footer: { marginTop: 40, position: "relative", zIndex: 2 },
-  footerText: { fontSize: "0.72rem", color: "#0d1a2e", fontWeight: 600, letterSpacing: "0.05em" },
-};
-
-// ─── Admin Styles ─────────────────────────────────────────────
-
-const A = {
-  page: {
-    minHeight: "100vh", background: "#040b1a",
-    backgroundImage: [
-      "radial-gradient(ellipse 70% 50% at 10% 20%, rgba(79,172,254,0.06) 0%, transparent 60%)",
-      "radial-gradient(ellipse 60% 40% at 90% 80%, rgba(102,0,255,0.06) 0%, transparent 55%)",
-    ].join(","),
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-    color: "#c8d8f0", padding: "28px 20px 60px",
-    maxWidth: 940, margin: "0 auto", position: "relative", zIndex: 1,
-  },
-  header: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14, marginBottom: 16 },
-  btnBack: {
-    background: "rgba(79,172,254,0.07)", border: "1px solid rgba(79,172,254,0.2)",
-    color: "#4facfe", borderRadius: 10, padding: "9px 16px",
-    fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer",
-  },
-  headerBadge: {
-    background: "linear-gradient(135deg, #4facfe, #00f2fe, #6600ff)",
-    color: "#fff", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 900,
-    fontSize: "0.7rem", letterSpacing: "0.14em", padding: "5px 12px", borderRadius: 8,
-    boxShadow: "0 0 20px rgba(79,172,254,0.4)",
-  },
-  h2: {
-    fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.3rem", fontWeight: 800,
-    background: "linear-gradient(90deg, #ffffff, #c8d8f0)",
-    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-  },
-  countBadge: {
-    background: "rgba(79,172,254,0.1)", color: "#4facfe",
-    fontSize: "0.78rem", fontWeight: 800, padding: "4px 12px",
-    borderRadius: 20, border: "1px solid rgba(79,172,254,0.25)",
-    fontFamily: "monospace",
-  },
-  btnGhost: {
-    background: "rgba(79,172,254,0.07)", border: "1px solid rgba(79,172,254,0.25)",
-    color: "#4facfe", fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.82rem",
-    fontWeight: 700, borderRadius: 10, padding: "9px 18px", cursor: "pointer",
-  },
-  btnBlue: {
-    background: "linear-gradient(135deg, #4facfe, #00f2fe)",
-    color: "#040b1a", fontFamily: "'Space Grotesk', sans-serif",
-    fontSize: "0.88rem", fontWeight: 800, border: "none",
-    borderRadius: 10, padding: "10px 20px", cursor: "pointer",
-    boxShadow: "0 4px 20px rgba(79,172,254,0.3)",
-  },
-  secNote: {
-    background: "rgba(79,172,254,0.05)", border: "1px solid rgba(79,172,254,0.12)",
-    borderRadius: 10, padding: "10px 16px",
-    fontSize: "0.76rem", color: "#2a4060", marginBottom: 20, lineHeight: 1.5,
-  },
-  authCard: {
-    maxWidth: 400, margin: "0 auto",
-    background: "linear-gradient(160deg, rgba(10,20,40,0.97), rgba(6,12,28,0.99))",
-    border: "1px solid rgba(79,172,254,0.18)", borderRadius: 20, padding: "40px 32px",
-    textAlign: "center",
-    boxShadow: "0 0 60px rgba(79,172,254,0.07), 0 30px 60px rgba(0,0,0,0.6)",
-  },
-  authIcon: { fontSize: "2.5rem", marginBottom: 16 },
-  authH: {
-    fontFamily: "'Space Grotesk', sans-serif", fontSize: "1.3rem", fontWeight: 700,
-    color: "#e8f0ff", marginBottom: 8,
-  },
-  authSub: { fontSize: "0.82rem", color: "#2a3f5a", lineHeight: 1.65, marginBottom: 24 },
-  input: {
-    width: "100%", background: "rgba(5,12,28,0.9)",
-    border: "1.5px solid rgba(79,172,254,0.2)", borderRadius: 12,
-    padding: "14px 16px", fontFamily: "'Plus Jakarta Sans', sans-serif",
-    fontSize: "1rem", color: "#c8d8f0", outline: "none",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
-    display: "block",
-  },
-  progressCard: {
-    background: "rgba(79,172,254,0.05)", border: "1px solid rgba(79,172,254,0.15)",
-    borderRadius: 14, padding: "16px 18px", marginBottom: 20,
-  },
-  progressRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  progressLabel: { fontSize: "0.84rem", fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif" },
-  progressCount: { fontSize: "0.84rem", fontFamily: "monospace", color: "#4facfe", fontWeight: 800 },
-  track: { height: 8, background: "rgba(255,255,255,0.05)", borderRadius: 99, overflow: "hidden", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.5)" },
-  fill:  { height: "100%", borderRadius: 99, transition: "width 0.8s cubic-bezier(0.4,0,0.2,1)" },
-  empty: {
-    textAlign: "center", color: "#2a3f5a", padding: "60px 20px",
-    border: "1px dashed rgba(79,172,254,0.12)", borderRadius: 16,
-    background: "rgba(79,172,254,0.02)", fontSize: "0.9rem",
-  },
-  tableWrap: {
-    overflowX: "auto", borderRadius: 16,
-    border: "1px solid rgba(79,172,254,0.12)",
-    background: "linear-gradient(160deg, rgba(8,16,35,0.98), rgba(5,10,24,0.99))",
-    boxShadow: "0 0 40px rgba(79,172,254,0.04)",
-  },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: {
-    fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.68rem", fontWeight: 800,
-    textTransform: "uppercase", letterSpacing: "0.12em", color: "#4facfe",
-    padding: "15px 16px", textAlign: "left",
-    borderBottom: "1px solid rgba(79,172,254,0.1)",
-    background: "rgba(8,18,38,0.95)",
-  },
-  td: { padding: "13px 16px", borderBottom: "1px solid rgba(79,172,254,0.05)", fontSize: "0.88rem", color: "#8a9bbf" },
-  btnDel: { background: "rgba(255,68,68,0.07)", border: "1px solid rgba(255,68,68,0.2)", color: "#ff6b6b", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: "0.78rem" },
-  btnYes: { background: "rgba(255,68,68,0.14)", border: "1px solid rgba(255,68,68,0.28)", color: "#ff6b6b", borderRadius: 7, padding: "4px 10px", cursor: "pointer", fontSize: "0.75rem" },
-  btnNo:  { background: "rgba(79,172,254,0.08)", border: "1px solid rgba(79,172,254,0.25)", color: "#4facfe", borderRadius: 7, padding: "4px 10px", cursor: "pointer", fontSize: "0.75rem" },
-  guideBox: {
-    marginTop: 24,
-    background: "rgba(79,172,254,0.04)", border: "1px solid rgba(79,172,254,0.12)",
-    borderRadius: 16, padding: "22px 26px",
-  },
-  guideTitle: {
-    fontFamily: "'Space Grotesk', sans-serif", fontSize: "0.88rem", fontWeight: 800,
-    background: "linear-gradient(90deg, #4facfe, #00f2fe)",
-    WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-    marginBottom: 14,
-  },
-  guideList: { paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10, fontSize: "0.86rem", color: "#2a4060", lineHeight: 1.65 },
-};
