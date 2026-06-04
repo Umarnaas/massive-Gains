@@ -930,7 +930,7 @@ function FormPage({ onSwitch }) {
                   <div style={S.fieldGroup}>
                     <label style={S.fieldLabel}>YOUR NAME</label>
                     <div style={S.prefixWrap}>
-                      <span style={S.prefixTag}>MCG</span>
+                      <span style={S.prefixTag}>WCG</span>
                       <input
                         className="field-input"
                         style={S.prefixInput}
