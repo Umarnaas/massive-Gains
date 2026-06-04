@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcICESZfVwhWdwqHQduZtt6vNZnEAh-RiT0nenIAxibRShKHryFwR6R5jvoniBezwp3Q/exec";
 const MAX_SLOTS  = 300;
-const FILE_NAME  = "MCG_ContactsGain_May2026";
+const FILE_NAME  = "WinnieCarson's_ContactsGain_june2026";
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -838,19 +838,19 @@ function FormPage({ onSwitch }) {
           </div>
 
           <h1 style={S.heroH1}>
-            <span style={S.heroLine1}>Massive</span>
-            <span style={S.heroLine2}>Gains</span>
-            <span style={S.heroLine3}>300.0</span>
+            <span style={S.heroLine1}>Winnie</span>
+            <span style={S.heroLine2}>Carson</span>
+            <span style={S.heroLine3}>ContactGain</span>
           </h1>
 
           <p style={S.heroSub}>
-            A verified Nigerian WhatsApp network built for serious entrepreneurs, hustlers &amp; go-getters. One import. 300 connections. Unlimited opportunity.
+            A verified Nigerian WhatsApp Visibility network built for serious entrepreneurs, hustlers &amp; go-getters. One import. 300 connections. Unlimited opportunity.
           </p>
 
           <div style={S.proofRow}>
             <div style={S.proofPill}>🇳🇬 Nigeria-Based</div>
             <div style={S.proofPill}>✅ Verified Members</div>
-            <div style={S.proofPill}>⚡ MCG Prefixed</div>
+            <div style={S.proofPill}>⚡ WCG Prefixed</div>
           </div>
 
           {slotInfo && (
@@ -880,8 +880,8 @@ function FormPage({ onSwitch }) {
           <div style={S.featureList}>
             {[
               ["⚡", "Instant contact import via .vcf file"],
-              ["👁", "See all 300 members' WhatsApp Status"],
-              ["🏷️", "MCG prefix — organised & verified"],
+              ["👁", "See all members' WhatsApp Status"],
+              ["🏷️", "WCG prefix — organised & verified"],
               ["🔒", "300-slot limited network — claim yours now"],
             ].map(([icon, text]) => (
               <div key={text} style={S.featureItem}>
@@ -906,24 +906,24 @@ function FormPage({ onSwitch }) {
                   <span style={{ fontSize: "2.2rem" }}>✅</span>
                 </div>
                 <h3 style={S.successH}>You're In!</h3>
-                <p style={S.successName}>MCG {savedName}</p>
+                <p style={S.successName}>WCG {savedName}</p>
                 {slotResult && (
                   <div style={S.slotBadge}>Slot #{slotResult} of 300</div>
                 )}
                 <p style={S.successMsg}>
-                  Your registration was successful! Please return to the WhatsApp group admin and notify them that you have submitted your contact details. The admin will then add you to the main <strong style={{ color: "#4facfe" }}>MCG 300.0</strong> WhatsApp group. Welcome to the network! 🎉
+                  Your registration was successful!  <strong style={{ color: "#4facfe" }}>WCG 300.0</strong> WhatsApp group. Welcome to the network! 🎉
                 </p>
               </div>
             ) : isFull ? (
               <div style={S.fullWrap}>
                 <span style={{ fontSize: "3rem", display: "block", marginBottom: 12 }}>🔒</span>
                 <h3 style={S.fullH}>Registration Closed</h3>
-                <p style={S.fullMsg}>All 300 MCG slots have been filled. The network is complete!</p>
+                <p style={S.fullMsg}>All 300 WCG slots have been filled. The network is complete!</p>
               </div>
             ) : (
               <>
                 <h2 style={S.cardH}>Claim Your Slot</h2>
-                <p style={S.cardSub}>Fill in your details below to join the MCG 300.0 network</p>
+                <p style={S.cardSub}>Fill in your details below to join the WCG 300.0 network</p>
 
                 <div style={S.formFields}>
                   {/* Name */}
@@ -935,12 +935,12 @@ function FormPage({ onSwitch }) {
                         className="field-input"
                         style={S.prefixInput}
                         type="text"
-                        placeholder="Chidi Okeke"
+                        placeholder="Winnie Carson"
                         value={name}
                         onChange={e => { setName(e.target.value); setStatus("idle"); }}
                       />
                     </div>
-                    <p style={S.fieldHint}>Saved exactly as typed, with MCG prefix added</p>
+                    <p style={S.fieldHint}>Saved exactly as typed, with WCG prefix added</p>
                   </div>
 
                   {/* Phone */}
@@ -992,7 +992,7 @@ function FormPage({ onSwitch }) {
       </div>
 
       <div style={S.footer}>
-        <span style={S.footerText}>MCG 300.0 · Massive Gains Network · 🇳🇬 Nigeria</span>
+        <span style={S.footerText}>WCG 300.0 · Winnie Carson's Network · 🇳🇬 Nigeria</span>
       </div>
     </div>
   );
@@ -1059,7 +1059,7 @@ function AdminPage({ onSwitch }) {
       <div style={A.header}>
         <button style={A.btnBack} onClick={onSwitch}>← Back to Form</button>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
-          <div style={A.headerBadge}>MCG</div>
+          <div style={A.headerBadge}>wCG</div>
           <h2 style={A.h2}>Admin Panel</h2>
           {fetched && <span style={A.countBadge}>{contacts.length}/{MAX_SLOTS}</span>}
         </div>
@@ -1126,7 +1126,7 @@ function AdminPage({ onSwitch }) {
               <table style={A.table}>
                 <thead>
                   <tr>
-                    {["Slot", "Name (MCG)", "Phone → Intl.", "Date", ""].map(h => (
+                    {["Slot", "Name (WCG)", "Phone → Intl.", "Date", ""].map(h => (
                       <th key={h} style={A.th}>{h}</th>
                     ))}
                   </tr>
@@ -1173,7 +1173,7 @@ function AdminPage({ onSwitch }) {
             <p style={A.guideTitle}>📲 How to distribute the .vcf file</p>
             <p style={A.guideStep}>
               1. Click <strong style={{ color: "#4facfe" }}>Download .vcf</strong> to save the contact file.<br />
-              2. Share <strong>MCG_ContactsGain_May2026.vcf</strong> in the WhatsApp group.<br />
+              2. Share <strong>WCG_ContactsGain_May2026.vcf</strong> in the WhatsApp group.<br />
               3. Members tap the file → <em>Import All</em> — all 300 contacts added instantly.<br />
               4. Everyone can now see each other's WhatsApp Status automatically.
             </p>
